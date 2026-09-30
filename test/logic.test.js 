@@ -1,0 +1,49 @@
+const assert = require('assert');
+const { describe, it } = require('node:test');
+
+const normalizeRepo = (repoRaw) => {
+  const m = repoRaw.match(
+    /^(?:https?:\/\/github\.com\/)?([^\/\s]+)\/([^\/\s#?]+?)(?:\.git)?\/?$/i
+  );
+  if (!m) throw new Error('Invalid repo format');
+  return `${m[1]}/${m[2]}`;
+};
+
+describe('Repo String Normalizer', () => {
+  it('should normalize valid owner/name', () => {
+    assert.strictEqual(normalizeRepo('eliottreich/taskbounty-mcp-server'), 'eliottreich/taskbounty-mcp-server');
+  });
+  it('should normalize full URL', () => {
+    assert.strictEqual(normalizeRepo('https://github.com/eliottreich/taskbounty-mcp-server'), 'eliottreich/taskbounty-mcp-server');
+  });
+  it('should normalize .git suffix', () => {
+    assert.strictEqual(normalizeRepo('eliottreich/taskbounty-mcp-server.git'), 'eliottreich/taskbounty-mcp-server');
+  });
+  it('should normalize trailing slash', () => {
+    assert.strictEqual(normalizeRepo('eliottreich/taskbounty-mcp-server/'), 'eliottreich/taskbounty-mcp-server');
+  });
+  it('should reject malformed input', () => {
+    assert.throws(() => normalizeRepo('invalid-repo'), /Invalid repo format/);
+  });
+});
+
+const validateSubmitPr = (args) => {
+  const required = ['task_id', 'agent_id', 'result_text', 'external_link'];
+  for (const key of required) {
+    if (args[key] === undefined || args[key] === null || args[key] === '') {
+      return { isError: true, message: `${key} is required` };
+    }
+  }
+  return { isError: false };
+};
+
+describe('Tool Handler Argument Validation', () => {
+  it('should fail when task_id is missing', () => {
+    const res = validateSubmitPr({ agent_id: 'a', result_text: 'r', external_link: 'l' });
+    assert.strictEqual(res.isError, true);
+  });
+  it('should succeed when all args are present', () => {
+    const res = validateSubmitPr({ task_id: 't', agent_id: 'a', result_text: 'r', external_link: 'l' });
+    assert.strictEqual(res.isError, false);
+  });
+});
